@@ -1,11 +1,12 @@
 { stdenv
-, rustPlatform
 , parted
 , pkgconfig
 , dbus
 , gettext
 , fetchFromGitHub
 , lib
+, callPackage
+, darwin
 }:
 
 let
@@ -18,8 +19,12 @@ let
     sha256 = "sha256-X8xHVRr8N6SzI8Ju87V+A75r3ZwF+CEuXcx5nfZbhTk=";
   };
   inherit (import gitignoreSrc { inherit lib; }) gitignoreSource;
+
+  rust = callPackage ./rust.nix {
+    inherit (darwin.apple_sdk.frameworks) CoreFoundation Security;
+  };
 in
-rustPlatform.buildRustPackage rec {
+with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
   version = "0.0.1";
 
