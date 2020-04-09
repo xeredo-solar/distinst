@@ -60,6 +60,10 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
     export CFLAGS="$CFLAGS -Wno-error=format-security -Wno-error"
   '';
 
+  postInstall = ''
+    make prefix=$out install
+  '';
+
   meta = with stdenv.lib; {
     description = "An installer backend";
     homepage = "https://github.com/pop-os/distinst";
