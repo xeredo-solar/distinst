@@ -7,6 +7,10 @@
 , lib
 , callPackage
 , darwin
+, llvmPackages
+, libxml2
+, glib
+, libunistring
 }:
 
 let
@@ -23,6 +27,7 @@ let
   rust = callPackage ./rust.nix {
     inherit (darwin.apple_sdk.frameworks) CoreFoundation Security;
   };
+  libcroco = callPackage ./libcroco.nix { };
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
@@ -40,7 +45,20 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   buildInputs = [
     parted
     dbus
+    llvmPackages.clang
+    llvmPackages.libclang
+
+    # shadow-deps of gettext rust
+    libxml2
+    libcroco
+    glib
+    libunistring
   ];
+
+  preBuild = ''
+    export LIBCLANG_PATH=${llvmPackages.libclang}/lib
+    export CFLAGS="$CFLAGS -Wno-error=format-security -Wno-error"
+  '';
 
   meta = with stdenv.lib; {
     description = "An installer backend";
