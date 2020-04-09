@@ -13,11 +13,13 @@
 , CoreFoundation, Security
 , llvmPackages_5
 , pkgsBuildTarget, pkgsBuildBuild
+, fetchpatch
 } @ args:
 
 let out = import <nixpkgs/pkgs/development/compilers/rust> {
   rustcVersion = "1.39.0";
   rustcSha256 = "sha256-tKH2tqk5MfJwaRq6T8he7gMv7NqXPmucd0zQaFdgk1c=";
+  enableRustcDev = false;
 
   # Note: the version MUST be one version prior to the version we're
   # building
@@ -37,7 +39,10 @@ let out = import <nixpkgs/pkgs/development/compilers/rust> {
   selectRustPackage = pkgs: out; # pkgs: pkgs.rust_1_39;
 
   rustcPatches = [
-    # <nixpkgs/pkgs/development/compilers/rust/0001-Allow-getting-no_std-from-the-config-file.patch>
+    (fetchpatch {
+      url = "https://github.com/QuiltOS/rust/commit/f1803452b9e95bfdbc3b8763138b9f92c7d12b46.diff";
+      sha256 = "1mzxaj46bq7ll617wg0mqnbnwr1da3hd4pbap8bjwhs3kfqnr7kk";
+    })
   ];
 }
 
