@@ -14,9 +14,10 @@
 , llvmPackages_5
 , pkgsBuildTarget, pkgsBuildBuild
 , fetchpatch
+, path
 } @ args:
 
-let out = import <nixpkgs/pkgs/development/compilers/rust> {
+let out = import "${path}/pkgs/development/compilers/rust" {
   rustcVersion = "1.39.0";
   rustcSha256 = "sha256-tKH2tqk5MfJwaRq6T8he7gMv7NqXPmucd0zQaFdgk1c=";
   enableRustcDev = false;
@@ -46,5 +47,5 @@ let out = import <nixpkgs/pkgs/development/compilers/rust> {
   ];
 }
 
-(builtins.removeAttrs args [ "fetchpatch" ]);
+(builtins.removeAttrs args [ "fetchpatch" "path" ]);
 in out
