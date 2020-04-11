@@ -11,6 +11,8 @@
 , libxml2
 , glib
 , libunistring
+, makeSetupHook
+, writeShellScript
 }:
 
 let
@@ -28,6 +30,13 @@ let
     inherit (darwin.apple_sdk.frameworks) CoreFoundation Security;
   };
   libcroco = callPackage ./libcroco.nix { };
+
+  ccForBuild="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc";
+  cxxForBuild="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}c++";
+  ccForHost="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc";
+  cxxForHost="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}c++";
+  releaseDir = "target/${rustTarget}/release";
+  rustTarget = rust.toRustTarget stdenv.hostPlatform;
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
@@ -40,6 +49,16 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   nativeBuildInputs = [
     pkgconfig
     gettext
+    (makeSetupHook {
+      name = "rust-fake";
+      deps = [];
+    } (writeShellScript "rust-fake.sh" ''
+      rustFake() {
+        ${preBuild}
+      }
+
+      shellHook=rustFake
+    ''))
   ];
 
   buildInputs = [
@@ -60,8 +79,39 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
     export CFLAGS="$CFLAGS -Wno-error=format-security -Wno-error"
   '';
 
-  postInstall = ''
-    make prefix=$out install
+  buildPhase = with builtins; ''
+    runHook preBuild
+
+    for m in cli ffi; do
+      (
+      set -x
+      env \
+        "CC_${rust.toRustTarget stdenv.buildPlatform}"="${ccForBuild}" \
+        "CXX_${rust.toRustTarget stdenv.buildPlatform}"="${cxxForBuild}" \
+        "CC_${rust.toRustTarget stdenv.hostPlatform}"="${ccForHost}" \
+        "CXX_${rust.toRustTarget stdenv.hostPlatform}"="${cxxForHost}" \
+        cargo build \
+          --release \
+          --target ${rustTarget} \
+          --frozen \
+          --manifest-path $m/Cargo.toml
+      )
+    done
+
+    # rename the output dir to a architecture independent one
+    mapfile -t targets < <(find "$NIX_BUILD_TOP" -type d | grep '${releaseDir}$')
+    for target in "''${targets[@]}"; do
+      rm -rf "$target/../../release"
+      ln -srf "$target" "$target/../../"
+    done
+
+    runHook postBuild
+  '';
+
+  doCheck = false;
+
+  installPhase = ''
+    make VENDORED=1 DEBUG=0 RELEASE=release prefix=$out install
   '';
 
   meta = with stdenv.lib; {
