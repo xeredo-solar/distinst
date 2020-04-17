@@ -2,6 +2,7 @@
 , parted
 , pkgconfig
 , dbus
+, rust
 , gettext
 , fetchFromGitHub
 , lib
@@ -26,9 +27,6 @@ let
   };
   inherit (import gitignoreSrc { inherit lib; }) gitignoreSource;
 
-  rust = callPackage ./rust.nix {
-    inherit (darwin.apple_sdk.frameworks) CoreFoundation Security;
-  };
   libcroco = callPackage ./libcroco.nix { };
 
   ccForBuild="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc";
@@ -44,7 +42,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   src = gitignoreSource ./.;
 
-  cargoSha256 = "sha256-f6g8gZCmKyTIhd+tnUf0t29PSRDGhSMWqZTGlwp/Hbk=";
+  cargoSha256 = "sha256-ulh1gLX3Zy7fQ1Vb9P+6qWs61Yys/u7QojdxISR9sB4=";
 
   nativeBuildInputs = [
     pkgconfig
