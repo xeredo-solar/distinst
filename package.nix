@@ -42,7 +42,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   src = gitignoreSource ./.;
 
-  cargoSha256 = "sha256-ulh1gLX3Zy7fQ1Vb9P+6qWs61Yys/u7QojdxISR9sB4=";
+  cargoSha256 = "07ff8y2rj8da9jf2fdx9xi5rpb9drp35iw3lv97nqgg24n1vw479";
 
   nativeBuildInputs = [
     pkgconfig
