@@ -24,12 +24,17 @@ boot.loader.grub.device = "BOOTDEVICE";
 {
   "users": ["USERNAME"],
   "keys": {
+    "time": {
+      "timeZone": "TIMEZONE"
+    },
     "i18n": {
-      "timezone": "TIMEZONE",
       "defaultLocale": "LOCALE"
     },
     "console": {
       "keyMap": "KEYBOARD"
+    },
+    "networking": {
+      "hostname": "HOSTNAME"
     },
     "services": {
       "xserver": {
