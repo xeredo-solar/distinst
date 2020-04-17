@@ -97,6 +97,8 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
     runHook postBuild
   '';
 
+  shellHook = preBuild;
+
   doCheck = false;
 
   installPhase = ''
