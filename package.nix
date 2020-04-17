@@ -12,8 +12,8 @@
 , libxml2
 , glib
 , libunistring
-, makeSetupHook
 , writeShellScript
+, glibc
 }:
 
 let
@@ -47,16 +47,6 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   nativeBuildInputs = [
     pkgconfig
     gettext
-    (makeSetupHook {
-      name = "rust-fake";
-      deps = [];
-    } (writeShellScript "rust-fake.sh" ''
-      rustFake() {
-        ${preBuild}
-      }
-
-      shellHook=rustFake
-    ''))
   ];
 
   buildInputs = [
@@ -75,6 +65,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   preBuild = ''
     export LIBCLANG_PATH=${llvmPackages.libclang}/lib
     export CFLAGS="$CFLAGS -Wno-error=format-security -Wno-error"
+    export BINDGEN_EXTRA_CLANG_ARGS="-I${parted.dev}/include -I${glibc.dev}/include -I${llvmPackages.libclang.out}/lib/clang/${llvmPackages.libclang.version}/include" # documented in the code as always... https://github.com/rust-lang/rust-bindgen/pull/1537 # but seems broken due to https://github.com/rust-lang/rust-bindgen/issues/1723
   '';
 
   buildPhase = with builtins; ''
