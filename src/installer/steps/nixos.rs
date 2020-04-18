@@ -3,33 +3,19 @@ use self::json::object;
 use self::json::array;
 use self::json::JsonValue;
 
-use bootloader::Bootloader;
-use super::{mount_cdrom, mount_efivars};
-use crate::installer::{conf::RecoveryEnv, steps::normalize_os_release_name};
-use chroot::Chroot;
-use distribution;
+use crate::installer::{conf::RecoveryEnv};
 use errors::*;
-use external::remount_rw;
-use hardware_support;
 use installer::traits::InstallerDiskOps;
-use libc;
-use misc;
-use os_release::OsRelease;
-use partition_identity::PartitionID;
-use rayon;
 use std::{
-    fs::{self, Permissions},
-    io::{self, Write},
-    os::unix::{ffi::OsStrExt, fs::PermissionsExt},
     path::Path,
     path::Component,
-    process::Command
+    process::Command,
+    fs,
+    io
 };
-use tempdir::TempDir;
 use timezones::Region;
 use Config;
 use UserAccountCreate;
-use INSTALL_HARDWARE_SUPPORT;
 
 #[macro_export]
 macro_rules! str {
@@ -118,9 +104,9 @@ fn generate_conftool_json<D: InstallerDiskOps>(
     config: &Config,
     region: Option<&Region>,
     user: Option<&UserAccountCreate>,
-    extraConfig: Option<JsonValue>
+    extra_config: Option<JsonValue>
 ) -> String {
-    let mut j = if extraConfig.is_some() { extraConfig.clone().unwrap() } else { object!{} };
+    let mut j = if extra_config.is_some() { extra_config.clone().unwrap() } else { object!{} };
 
     if user.is_some() {
         let u = user.unwrap();
@@ -157,7 +143,7 @@ fn generate_conftool_json<D: InstallerDiskOps>(
         j["keys"]["services"]["xserver"]["xkbVariant"] = str!(config.keyboard_variant.clone().unwrap());
     }
 
-    // TODO: crypttab? flags? what is region?
+    // TODO: crypttab? flags?
 
     return json::stringify(j);
 }
