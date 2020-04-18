@@ -2,8 +2,9 @@ mod bootloader;
 mod configure;
 mod initialize;
 mod partition;
+mod nixos;
 
-pub use self::{bootloader::*, configure::*, initialize::*, partition::*};
+pub use self::{bootloader::*, configure::*, initialize::*, partition::*, nixos::*};
 
 use std::{
     borrow::Cow,

@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+mod config;
+
 #[derive(Clone, Debug, Default)]
 pub struct Timezones {
     zones: Vec<Zone>,
@@ -13,7 +15,7 @@ impl Timezones {
     pub fn new() -> io::Result<Self> {
         let mut output = Timezones::default();
 
-        for zone in fs::read_dir("/usr/share/zoneinfo/")? {
+        for zone in fs::read_dir(config::ZONE_INFO_LOCATION)? {
             let zone = zone?;
             let zone_path = zone.path();
             if zone_path.is_dir() {

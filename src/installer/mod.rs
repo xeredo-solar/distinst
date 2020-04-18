@@ -156,9 +156,9 @@ impl Installer {
                 .verify_partitions(bootloader)
                 .with_context(|err| format!("partition validation: {}", err))?;
 
-            let (squashfs, remove_pkgs) = steps.apply(Step::Init, "initializing", |steps| {
+            /* let (squashfs, remove_pkgs) = steps.apply(Step::Init, "initializing", |steps| {
                 Installer::initialize(&mut disks, config, percent!(steps))
-            })?;
+            })?; */
 
             steps.apply(Step::Partition, "partitioning", |steps| {
                 Installer::partition(&mut disks, percent!(steps))
@@ -181,14 +181,26 @@ impl Installer {
                 return Ok(());
             }
 
-            let iso_os_release = steps.apply(Step::Extract, "extracting", |steps| {
+            /* let iso_os_release = steps.apply(Step::Extract, "extracting", |steps| {
                 Installer::extract(squashfs.as_path(), mount_dir.path(), percent!(steps))
-            })?;
+            })?; */
 
             let timezone = steps.installer.timezone_cb.as_mut().map(|func| func());
             let user = steps.installer.user_creation_cb.as_mut().map(|func| func());
 
-            steps.apply(Step::Configure, "configuring chroot", |steps| {
+            steps.apply(Step::Configure, "installing nixOS", |steps| {
+                Installer::nixos(
+                    recovery_conf.as_mut(),
+                    &disks,
+                    mount_dir.path(),
+                    &config,
+                    timezone.as_ref(),
+                    user.as_ref(),
+                    percent!(steps),
+                )
+            })?;
+
+            /* steps.apply(Step::Configure, "configuring chroot", |steps| {
                 Installer::configure(
                     recovery_conf.as_mut(),
                     &disks,
@@ -211,7 +223,7 @@ impl Installer {
                     &iso_os_release,
                     percent!(steps),
                 )
-            })?;
+            })?; */
 
             mounts.unmount(false).with_context(|err| format!("chroot unmount: {}", err))?;
             mount_dir.close().with_context(|err| format!("closing mount directory: {}", err))
@@ -437,6 +449,26 @@ impl Installer {
             region,
             user,
             remove_pkgs,
+            callback,
+        )
+    }
+
+    fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
+        recovery_conf: Option<&mut RecoveryEnv>,
+        disks: &Disks,
+        mount_dir: P,
+        config: &Config,
+        region: Option<&Region>,
+        user: Option<&UserAccountCreate>,
+        callback: F,
+    ) -> io::Result<()> {
+        steps::nixos(
+            recovery_conf,
+            disks,
+            mount_dir,
+            config,
+            region,
+            user,
             callback,
         )
     }
