@@ -191,6 +191,7 @@ impl Installer {
             steps.apply(Step::Configure, "installing nixOS", |steps| {
                 Installer::nixos(
                     recovery_conf.as_mut(),
+                    bootloader,
                     &disks,
                     mount_dir.path(),
                     &config,
@@ -455,6 +456,7 @@ impl Installer {
 
     fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
         recovery_conf: Option<&mut RecoveryEnv>,
+        bootloader: Bootloader,
         disks: &Disks,
         mount_dir: P,
         config: &Config,
@@ -464,6 +466,7 @@ impl Installer {
     ) -> io::Result<()> {
         steps::nixos(
             recovery_conf,
+            bootloader,
             disks,
             mount_dir,
             config,
