@@ -3,15 +3,18 @@ use self::json::object;
 use self::json::array;
 use self::json::JsonValue;
 
+use NO_EFI_VARIABLES;
 use crate::installer::{conf::RecoveryEnv};
 use errors::*;
+use disks::{Bootloader, Disks};
 use installer::traits::InstallerDiskOps;
 use std::{
     path::Path,
     path::Component,
     process::Command,
     fs,
-    io
+    io,
+    sync::atomic::Ordering,
 };
 use timezones::Region;
 use Config;
@@ -26,6 +29,7 @@ macro_rules! str {
 
 pub fn nixos<D: InstallerDiskOps, P: AsRef<Path>, F: FnMut(i32)>(
     recovery_conf: Option<&mut RecoveryEnv>,
+    bootloader: Bootloader,
     disks: &D,
     mount_dir: P,
     config: &Config,
@@ -56,14 +60,20 @@ pub fn nixos<D: InstallerDiskOps, P: AsRef<Path>, F: FnMut(i32)>(
         extra_config
     );
 
+    let boot = generate_boot_config(
+        disks,
+        bootloader
+    );
+
     let nix_conf_folder = mount_dir.join("etc/nixos");
 
     let target = mount_dir.to_str().unwrap();
 
     fs::create_dir_all(&nix_conf_folder).expect("failed to mkdir /etc/nixos on target");
     fs::write(nix_conf_folder.join("conf-tool.json"), json).expect("failed to write /etc/nixos/conf-tool.json");
+    fs::write(nix_conf_folder.join("boot.nix"), boot).expect("failed to write /etc/nixos/boot.nix");
 
-    info!("setting up config");
+    info!("setting up");
 
     let init = Command::new("conf")
             .arg("init")
@@ -146,4 +156,46 @@ fn generate_conftool_json<D: InstallerDiskOps>(
     // TODO: crypttab? flags?
 
     return json::stringify(j);
+}
+
+macro_rules! ap {
+    ($target:expr, [ $($str:expr),+ ]) => {
+        $($target += $str;)+
+    }
+}
+
+macro_rules! ap_nix {
+    ($target:expr, $key:expr, $val:expr) => {
+        ap!($target, [ "  ", $key, " = ", $val, ";\n" ]);
+    }
+}
+
+fn generate_boot_config<D: InstallerDiskOps>(
+    disks: &D,
+    bootloader: Bootloader,
+) -> String {
+    let mut conf: String = "{ config, pkgs, lib, ... }:".to_string();
+
+    ap!(conf, [
+        "# Boot settings, be careful\n\n",
+        "{"
+    ]);
+
+    match bootloader {
+        Bootloader::Bios => {
+            ap_nix!(conf, "boot.loader.grub.enable", "true");
+            ap_nix!(conf, "boot.loader.grub.device", "\"BOOTDEVICE\"");
+        }
+        Bootloader::Efi => {
+            ap_nix!(conf, "boot.loader.canTouchEfiVariables", if NO_EFI_VARIABLES.load(Ordering::Relaxed) { "false" } else { "true" }); // if not --no-efi-vars
+            ap_nix!(conf, "boot.loader.efi.efiSysMountPoint", "\"/boot\""); // get from disk ops
+            ap_nix!(conf, "boot.loader.grub.enable", "true");
+            ap_nix!(conf, "boot.loader.grub.efiSupport", "true");
+            ap_nix!(conf, "boot.loader.grub.devices", "[ \"nodev\" ]");
+        }
+    }
+
+    conf += "}\n";
+
+    return conf
 }
