@@ -17,3 +17,4 @@ debian/
 !debian/copyright
 !debian/*.install
 result*
+config.rs

@@ -2,6 +2,15 @@
 
 Distinst is a Rust-based software library that handles Linux distribution installer installation details. It has been built specifically to be used in the construction of Linux distribution installers, so that installers can spend more time improving their UI, and less time worrying about some of the more complicated implementation details, such as partition management & encryption.
 
+## NixOS testing
+
+```
+# NOTE: all commands open shells
+nix run meros.conf-tool # can be skipped on meros
+nix-shell
+cargo build --manifest-path cli/Cargo.toml  && RUST_BACKTRACE=1 bash test.sh
+```
+
 ## Frontends
 
 At the moment, elementary's installer is the primary target for distinst. However, distinst also ships with a CLI application (also called distinst) that serves as a fully-functioning test bed for the distinst library. Example scripts exist within the [tests](https://github.com/pop-os/distinst/tree/master_bionic/tests) directory to demonstrate how the CLI

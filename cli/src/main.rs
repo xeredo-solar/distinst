@@ -13,6 +13,7 @@ use clap::{App, Arg, ArgMatches, Values};
 use configure::*;
 use distinst::{timezones::Timezones, *};
 use errors::DistinstError;
+use os_release::OsRelease;
 
 use pbr::ProgressBar;
 
@@ -26,6 +27,9 @@ use std::{
 };
 
 fn main() {
+    let release = OsRelease::new_from(Path::new("/etc/os-release")).expect("error loading os_release");
+    let isNixOS = release.id == "nixos";
+
     let matches = App::new("distinst")
         .arg(
             Arg::with_name("username")
@@ -61,7 +65,7 @@ fn main() {
                 .long("squashfs")
                 .help("define the squashfs image which will be installed")
                 .takes_value(true)
-                .required(true),
+                .required(!isNixOS),
         )
         .arg(
             Arg::with_name("hostname")
@@ -95,7 +99,7 @@ fn main() {
                 .long("remove")
                 .help("defines the manifest file that contains the packages to remove post-install")
                 .takes_value(true)
-                .required(true),
+                .required(!isNixOS),
         )
         .arg(
             Arg::with_name("disk")
@@ -219,11 +223,11 @@ fn main() {
         eprintln!("Failed to initialize logging: {}", err);
     }
 
-    let squashfs = matches.value_of("squashfs").unwrap();
+    let squashfs = if isNixOS { "" } else { matches.value_of("squashfs").expect("should have --squashfs") };
+    let remove = if isNixOS { "" } else { matches.value_of("remove").expect("should have --remove") };
     let hostname = matches.value_of("hostname").unwrap();
     let mut keyboard = matches.values_of("keyboard").unwrap();
     let lang = matches.value_of("lang").unwrap();
-    let remove = matches.value_of("remove").unwrap();
 
     let tzs_;
     let timezone = match matches.values_of("timezone") {
