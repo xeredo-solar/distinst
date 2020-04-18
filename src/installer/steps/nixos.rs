@@ -27,10 +27,10 @@ macro_rules! str {
     }
 }
 
-pub fn nixos<D: InstallerDiskOps, P: AsRef<Path>, F: FnMut(i32)>(
+pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
     recovery_conf: Option<&mut RecoveryEnv>,
     bootloader: Bootloader,
-    disks: &D,
+    disks: &Disks,
     mount_dir: P,
     config: &Config,
     region: Option<&Region>,
@@ -170,11 +170,26 @@ macro_rules! ap_nix {
     }
 }
 
-fn generate_boot_config<D: InstallerDiskOps>(
-    disks: &D,
+macro_rules! quote {
+    ($str:expr) => {
+        &format!("\"{}\"", $str)
+    }
+}
+
+fn generate_boot_config(
+    disks: &Disks,
     bootloader: Bootloader,
 ) -> String {
     let mut conf: String = "{ config, pkgs, lib, ... }:".to_string();
+
+    let ((root_dev, _root_part), boot_opt) = disks.get_base_partitions(bootloader);
+
+    let mut efi_part_num = 0;
+
+    let bootloader_dev = boot_opt.map_or(root_dev, |(dev, dev_part)| {
+        efi_part_num = dev_part.number;
+        dev
+    });
 
     ap!(conf, [
         "# Boot settings, be careful\n\n",
@@ -184,11 +199,11 @@ fn generate_boot_config<D: InstallerDiskOps>(
     match bootloader {
         Bootloader::Bios => {
             ap_nix!(conf, "boot.loader.grub.enable", "true");
-            ap_nix!(conf, "boot.loader.grub.device", "\"BOOTDEVICE\"");
+            ap_nix!(conf, "boot.loader.grub.device", quote!(bootloader_dev.to_str().unwrap().to_owned()));
         }
         Bootloader::Efi => {
             ap_nix!(conf, "boot.loader.canTouchEfiVariables", if NO_EFI_VARIABLES.load(Ordering::Relaxed) { "false" } else { "true" }); // if not --no-efi-vars
-            ap_nix!(conf, "boot.loader.efi.efiSysMountPoint", "\"/boot\""); // get from disk ops
+            ap_nix!(conf, "boot.loader.efi.efiSysMountPoint", quote!("/boot/efi")); // maybe get from disk ops?
             ap_nix!(conf, "boot.loader.grub.enable", "true");
             ap_nix!(conf, "boot.loader.grub.efiSupport", "true");
             ap_nix!(conf, "boot.loader.grub.devices", "[ \"nodev\" ]");
