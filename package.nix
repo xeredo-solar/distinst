@@ -68,7 +68,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
     export LIBCLANG_PATH=${llvmPackages.libclang}/lib
     export CFLAGS="$CFLAGS -Wno-error=format-security -Wno-error"
     export BINDGEN_EXTRA_CLANG_ARGS="-I${parted.dev}/include -I${glibc.dev}/include -I${llvmPackages.libclang.out}/lib/clang/${llvmPackages.libclang.version}/include" # documented in the code as always... https://github.com/rust-lang/rust-bindgen/pull/1537 # but seems broken due to https://github.com/rust-lang/rust-bindgen/issues/1723
-    echo 'pub static ZONE_INFO_LOCATION: &str = "${tzdata}/share/zoneinfo";' > crates/timezones/src/config.rs
+    echo 'pub static ZONE_INFO_LOCATION: &str = "${tzdata}/share/zoneinfo";' > crates/timezones/src/buildconfig.rs
   '';
 
   buildPhase = with builtins; ''
