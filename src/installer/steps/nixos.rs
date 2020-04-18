@@ -96,12 +96,16 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
             .arg(target)
             .arg("-L")
             .arg("-v")
-            .output()
+            .status() // .output()
             .expect("failed to execute install command");
 
     // TODO: somehow update status while installing
 
-    if !install.status.success() {
+    /* if !install.status.success() {
+        io::Error::new(io::ErrorKind::Other, "failed to install");
+    } */
+
+    if !install.success() {
         io::Error::new(io::ErrorKind::Other, "failed to install");
     }
 
