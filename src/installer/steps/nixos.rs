@@ -146,7 +146,7 @@ fn generate_conftool_json<D: InstallerDiskOps>(
 
     j["keys"]["i18n"]["defaultLocale"] = str!(config.lang.clone());
     j["keys"]["console"]["useXkbConfig"] = JsonValue::Boolean(true);
-    j["keys"]["networking"]["hostname"] = str!(config.hostname.clone());
+    j["keys"]["networking"]["hostName"] = str!(config.hostname.clone());
     j["keys"]["services"]["xserver"]["layout"] = str!(config.keyboard_layout.clone());
 
     if config.keyboard_model.is_some() {
