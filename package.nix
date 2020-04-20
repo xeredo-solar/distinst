@@ -15,6 +15,9 @@
 , writeShellScript
 , glibc
 , tzdata
+, nixStable
+, makeWrapper
+, path
 }:
 
 let
@@ -36,6 +39,18 @@ let
   cxxForHost="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}c++";
   releaseDir = "target/${rustTarget}/release";
   rustTarget = rust.toRustTarget stdenv.hostPlatform;
+
+  nixPatched = nixStable.overrideAttrs(p: p // { patches = [ ./json-progress.patch ]; });
+  tools =
+    with import "${path}/nixos" { configuration = {
+      nixpkgs.overlays = [
+        (self: super: {
+          nix = nixPatched;
+          })
+      ];
+    }; };
+    with config.system.build;
+      [ nixPatched ] ++ [ nixos-generate-config nixos-install ]; #  nixos-enter manual.manpages ];
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
@@ -47,6 +62,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   nativeBuildInputs = [
     pkgconfig
+    makeWrapper
     gettext
   ];
 
@@ -100,12 +116,16 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
     runHook postBuild
   '';
 
-  shellHook = preBuild;
+  shellHook = ''
+    ${preBuild}
+    export PATH="${stdenv.lib.makeBinPath tools}:$PATH"
+  '';
 
   doCheck = false;
 
   installPhase = ''
     make VENDORED=1 DEBUG=0 RELEASE=release prefix=$out install
+    wrapProgram $out/bin/distinst --append PATH : ${stdenv.lib.makeBinPath tools}
   '';
 
   meta = with stdenv.lib; {
