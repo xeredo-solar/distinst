@@ -1,6 +1,6 @@
-From 1651ae5c1ef41863b458223fa47476ca12f68011 Mon Sep 17 00:00:00 2001
+From 87011c3c02fda19e67144ea7bdef4db40ec7e7e4 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
-Date: Mon, 20 Apr 2020 09:01:42 +0200
+Date: Tue, 14 Jul 2020 17:50:44 +0200
 Subject: [PATCH] feat: add a JSON progress bar to fd 3
 
 ---
@@ -10,7 +10,7 @@ Subject: [PATCH] feat: add a JSON progress bar to fd 3
  3 files changed, 101 insertions(+), 2 deletions(-)
 
 diff --git a/src/libutil/logging.cc b/src/libutil/logging.cc
-index fa5c84a2..20b1a05b 100644
+index b379306f..27d7c92f 100644
 --- a/src/libutil/logging.cc
 +++ b/src/libutil/logging.cc
 @@ -88,6 +88,18 @@ void writeToStderr(const string & s)
@@ -33,10 +33,10 @@ index fa5c84a2..20b1a05b 100644
  {
      return new SimpleLogger();
 diff --git a/src/libutil/logging.hh b/src/libutil/logging.hh
-index beb5e6b6..bbb2269b 100644
+index 5df03da7..865f95e1 100644
 --- a/src/libutil/logging.hh
 +++ b/src/libutil/logging.hh
-@@ -168,5 +168,6 @@ inline void warn(const std::string & fs, const Args & ... args)
+@@ -168,5 +168,6 @@ inline void warn(const std::string & fs, Args... args)
  void warnOnce(bool & haveWarned, const FormatOrString & fs);
  
  void writeToStderr(const string & s);
@@ -44,7 +44,7 @@ index beb5e6b6..bbb2269b 100644
  
  }
 diff --git a/src/nix/progress-bar.cc b/src/nix/progress-bar.cc
-index 26631416..92d4c1d1 100644
+index 98049b5d..1ed693a1 100644
 --- a/src/nix/progress-bar.cc
 +++ b/src/nix/progress-bar.cc
 @@ -7,6 +7,7 @@
@@ -55,7 +55,7 @@ index 26631416..92d4c1d1 100644
  
  namespace nix {
  
-@@ -87,13 +88,14 @@ public:
+@@ -80,13 +81,14 @@ public:
          : printBuildLogs(printBuildLogs)
          , isTTY(isTTY)
      {
@@ -71,7 +71,7 @@ index 26631416..92d4c1d1 100644
                  state.wait_for(quitCV, std::chrono::milliseconds(50));
              }
          });
-@@ -127,6 +129,10 @@ public:
+@@ -120,6 +122,10 @@ public:
      void log(State & state, Verbosity lvl, const std::string & s)
      {
          if (state.active) {
@@ -82,7 +82,7 @@ index 26631416..92d4c1d1 100644
              writeToStderr("\r\e[K" + filterANSIEscapes(s, !isTTY) + ANSI_NORMAL "\n");
              draw(state);
          } else {
-@@ -312,10 +318,46 @@ public:
+@@ -305,10 +311,46 @@ public:
          updateCV.notify_one();
      }
  
@@ -119,7 +119,7 @@ index 26631416..92d4c1d1 100644
 +            }
 +        }
 +
-+        writeToAlien("@state " + s.dump());
++        writeToAlien(s.dump());
 +    }
 +
      void draw(State & state)
@@ -130,7 +130,7 @@ index 26631416..92d4c1d1 100644
  
          std::string line;
  
-@@ -353,6 +395,50 @@ public:
+@@ -346,6 +388,50 @@ public:
          writeToStderr("\r" + filterANSIEscapes(line, false, width) + "\e[K");
      }
  
@@ -182,5 +182,5 @@ index 26631416..92d4c1d1 100644
      {
          auto MiB = 1024.0 * 1024.0;
 -- 
-2.25.3
+2.27.0
 
