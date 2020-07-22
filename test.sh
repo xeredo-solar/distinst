@@ -7,8 +7,8 @@ fi
 
 export RUST_BACKTRACE=1
 
-exec sudo -E target/debug/distinst \
-    -h "meros-testing" \
+exec sudo -E target/*/distinst \
+    -h "solaros-testing" \
     -k "us" \
     -l "en_US.UTF-8" \
     -b "$1" \
@@ -16,6 +16,6 @@ exec sudo -E target/debug/distinst \
     -n "$1:primary:start:512M:fat32:mount=/boot/efi:flags=esp" \
     -n "$1:primary:512M:-4096M:ext4:mount=/" \
     -n "$1:primary:-4096M:end:swap" \
-    --username "meros" \
-    --realname "MerOS User" \
+    --username "solaros" \
+    --realname "solarOS User" \
     --tz "Etc/UTC"
