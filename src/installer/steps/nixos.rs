@@ -89,7 +89,7 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
             .arg("--root")
             .arg(target)
             .arg("--template")
-            .arg("meros")
+            .arg("solaros")
             .arg("--hwScan")
             .status()
             .expect("failed to execute init command");

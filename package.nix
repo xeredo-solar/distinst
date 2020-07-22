@@ -51,7 +51,7 @@ let
     }; };
     with config.system.build;
       [ nixPatched ] ++ [ nixos-generate-config nixos-install /* nixos-enter manual.manpages */] ++
-        [ (writeShellScriptBin "nixos-install-wrapped" "nixos-install $@ 3>&1 >/dev/null") ];
+        [ (writeShellScriptBin "nixos-install-wrapped" "exec nixos-install \"$@\" 3>&1 >/dev/null") ];
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
