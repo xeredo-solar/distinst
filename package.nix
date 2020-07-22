@@ -18,6 +18,7 @@
 , nixStable
 , makeWrapper
 , path
+, conf-tool ? ((import (builtins.fetchTarball https://nix.ssd-solar.dev/dev/solaros/nixexprs.tar.xz)).conf-tool)
 }:
 
 let
@@ -50,7 +51,7 @@ let
       ];
     }; };
     with config.system.build;
-      [ nixPatched ] ++ [ nixos-generate-config nixos-install /* nixos-enter manual.manpages */] ++
+      [ nixPatched ] ++ [ nixos-generate-config nixos-install conf-tool /* nixos-enter manual.manpages */] ++
         [ (writeShellScriptBin "nixos-install-wrapped" "exec nixos-install \"$@\" 3>&1 >/dev/null") ];
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
