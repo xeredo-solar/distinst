@@ -5,11 +5,13 @@ Distinst is a Rust-based software library that handles Linux distribution instal
 ## NixOS testing
 
 ```
-# NOTE: all commands open shells
-nix run meros.conf-tool # can be skipped on meros
+nix run solar.conf-tool # can be skipped on solaros
 nix-shell
-cargo build --manifest-path cli/Cargo.toml  && RUST_BACKTRACE=1 bash test.sh
+cargo build --manifest-path cli/Cargo.toml # for release build run buildPhase
+bash test.sh <DEVICE>
 ```
+
+If you need a fake device, run `sudo bash loopdevice.sh` to get a 16gb fake disk (the disk appears to just be 16gb, in reality it's an empty file)
 
 ## Frontends
 
