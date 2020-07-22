@@ -119,7 +119,7 @@ index 98049b5d..1ed693a1 100644
 +            }
 +        }
 +
-+        writeToAlien(s.dump());
++        writeToAlien(s.dump() + '\n');
 +    }
 +
      void draw(State & state)
