@@ -2,6 +2,7 @@ extern crate json;
 use self::json::object;
 use self::json::array;
 use self::json::JsonValue;
+use self::json::parse;
 
 use NO_EFI_VARIABLES;
 use crate::installer::{conf::RecoveryEnv};
@@ -11,14 +12,21 @@ use installer::traits::InstallerDiskOps;
 use std::{
     path::Path,
     path::Component,
-    process::Command,
+    process::{Command, Stdio},
     fs,
-    io,
+    io::{self, BufReader, BufRead},
     sync::atomic::Ordering,
 };
 use timezones::Region;
 use Config;
 use UserAccountCreate;
+
+const USE_STATUS: [(&str, f64); 3] = [
+    /* status, weight*/
+    ("builds", 1.0),
+    ("copyPath", 0.1),
+    ("download", 0.3)
+];
 
 #[macro_export]
 macro_rules! str {
@@ -26,6 +34,7 @@ macro_rules! str {
         JsonValue::String($var);
     }
 }
+
 
 pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
     recovery_conf: Option<&mut RecoveryEnv>,
@@ -91,21 +100,40 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
 
     info!("running nixos-install");
 
-    let install = Command::new("nixos-install")
+    let mut install = Command::new("nixos-install-wrapped")
             .arg("--root")
             .arg(target)
             .arg("-L")
             .arg("-v")
-            .status() // .output()
+            .stdout(Stdio::piped())
+            .spawn()
             .expect("failed to execute install command");
 
     // TODO: somehow update status while installing
+
+    if let Some(ref mut stdout) = install.stdout {
+        for line in BufReader::new(stdout).lines() {
+            match progress(line.unwrap()) {
+                Some(p) => {
+                    println!("{}", p);
+                    callback((p * 100.0) as i32);
+                },
+                _ => ()
+            }
+        }
+    }
 
     /* if !install.status.success() {
         io::Error::new(io::ErrorKind::Other, "failed to install");
     } */
 
-    if !install.success() {
+    let exit_status = match install.try_wait() {
+        Ok(Some(s)) => s,
+        Ok(None) => install.wait().unwrap(),
+        Err(e) => return Err(io::Error::new(io::ErrorKind::Other, "failed to install")),
+    };
+
+    if !exit_status.success() {
         io::Error::new(io::ErrorKind::Other, "failed to install");
     }
 
@@ -217,4 +245,53 @@ fn generate_boot_config(
     conf += "}\n";
 
     return conf
+}
+
+fn progress(data: String) -> Option<f64> {
+    struct Status {
+        done: u64,
+        expected: u64,
+        weight: f64,
+    }
+
+    fn to_status(data: &JsonValue) -> Result<Vec<Status>, io::Error> {
+        let mut status: Vec<Status> = Vec::new();
+        for &(name, weight) in USE_STATUS.iter() {
+            let item = &data[name];
+            status.push(Status {
+                done: match item["done"].as_u64() {
+                    Some(x) => x,
+                    _ => return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput, "Cannot find name"))
+                },
+                expected: match item["expected"].as_u64() {
+                    Some(x) => x,
+                    _ => return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput, "Cannot find name"))
+                },
+                weight: weight,
+            });
+        }
+        Ok(status)
+    }
+
+    fn percentage(data: Vec<Status>) -> Option<f64> {
+        let mut done = 0f64;
+        let mut expected = 0f64;
+
+        for i in data {
+            done += i.done as f64 * i.weight;
+            expected += i.expected as f64 * i.weight;
+        }
+
+        if expected == 0.0 || done == expected {
+            None
+        } else {
+            Some(done / expected)
+        }
+    }
+
+    let parsed = parse(&data).unwrap();
+    let status = to_status(&parsed["status"]).unwrap();
+    percentage(status)
 }
