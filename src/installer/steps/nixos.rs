@@ -16,6 +16,7 @@ use std::{
     fs,
     io::{self, BufReader, BufRead},
     sync::atomic::Ordering,
+    os::unix::fs::PermissionsExt,
 };
 use timezones::Region;
 use Config;
@@ -81,6 +82,11 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
     fs::create_dir_all(&nix_conf_folder).expect("failed to mkdir /etc/nixos on target");
     fs::write(nix_conf_folder.join("conf-tool.json"), json).expect("failed to write /etc/nixos/conf-tool.json");
     fs::write(nix_conf_folder.join("boot.nix"), boot).expect("failed to write /etc/nixos/boot.nix");
+    // nixos-install: path $PARENT should have permissions 755, but had permissions 750. Consider running $CMD
+    // tmp make parent have permission 755
+    let target_parent = mount_dir.parent().unwrap();
+    let target_parent_perm = fs::metadata(target_parent)?.permissions();
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o755)).expect("failed to update permissions for install-parent to 755");
 
     info!("setting up");
 
@@ -103,19 +109,18 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
     let mut install = Command::new("nixos-install-wrapped")
             .arg("--root")
             .arg(target)
-            .arg("-L")
             .arg("-v")
-            .stdout(Stdio::piped())
+            .arg("--show-trace")
+            .env("LOGFILE", mount_dir.join("install.log").to_str().unwrap())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("failed to execute install command");
 
-    // TODO: somehow update status while installing
-
-    if let Some(ref mut stdout) = install.stdout {
-        for line in BufReader::new(stdout).lines() {
+    if let Some(ref mut stderr) = install.stderr {
+        for line in BufReader::new(stderr).lines() {
             match progress(line.unwrap()) {
                 Some(p) => {
-                    println!("{}", p);
                     callback((p * 100.0) as i32);
                 },
                 _ => ()
@@ -123,18 +128,12 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
         }
     }
 
-    /* if !install.status.success() {
-        io::Error::new(io::ErrorKind::Other, "failed to install");
-    } */
+    fs::set_permissions(target_parent, target_parent_perm).expect("failed to update permissions for install-parent to previous value");
 
-    let exit_status = match install.try_wait() {
-        Ok(Some(s)) => s,
-        Ok(None) => install.wait().unwrap(),
-        Err(e) => return Err(io::Error::new(io::ErrorKind::Other, "failed to install")),
-    };
+    let exit_status = install.wait().expect("failed to install");
 
     if !exit_status.success() {
-        io::Error::new(io::ErrorKind::Other, "failed to install");
+        return Err(io::Error::new(io::ErrorKind::Other, "failed to install"));
     }
 
     Ok(())
