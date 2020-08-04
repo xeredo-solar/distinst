@@ -123,7 +123,11 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
         }
     }
 
-    let exit_status = install.wait().expect("failed to install");
+    let exit_status = match install.try_wait() {
+        Ok(Some(s)) => s,
+        Ok(None) => install.wait().unwrap(),
+        Err(e) => return Err(io::Error::new(io::ErrorKind::Other, "failed to install")),
+    };
 
     if !exit_status.success() {
         return Err(io::Error::new(io::ErrorKind::Other, "failed to install"));
