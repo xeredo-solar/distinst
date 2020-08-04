@@ -69,6 +69,8 @@ let
         [ (writeShellScriptBin "nixos-install-wrapped" (builtins.readFile ./install-wrapper.sh)) ];
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
+  inherit tools;
+
   pname = "distinst";
   version = "0.0.1";
 
