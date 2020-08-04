@@ -82,11 +82,6 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
     fs::create_dir_all(&nix_conf_folder).expect("failed to mkdir /etc/nixos on target");
     fs::write(nix_conf_folder.join("conf-tool.json"), json).expect("failed to write /etc/nixos/conf-tool.json");
     fs::write(nix_conf_folder.join("boot.nix"), boot).expect("failed to write /etc/nixos/boot.nix");
-    // nixos-install: path $PARENT should have permissions 755, but had permissions 750. Consider running $CMD
-    // tmp make parent have permission 755
-    let target_parent = mount_dir.parent().unwrap();
-    let target_parent_perm = fs::metadata(target_parent)?.permissions();
-    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o755)).expect("failed to update permissions for install-parent to 755");
 
     info!("setting up");
 
@@ -127,8 +122,6 @@ pub fn nixos<P: AsRef<Path>, F: FnMut(i32)>(
             }
         }
     }
-
-    fs::set_permissions(target_parent, target_parent_perm).expect("failed to update permissions for install-parent to previous value");
 
     let exit_status = install.wait().expect("failed to install");
 
