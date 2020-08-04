@@ -4,9 +4,17 @@ Distinst is a Rust-based software library that handles Linux distribution instal
 
 ## NixOS testing
 
+Building:
+
 ```
 nix-shell
 cargo build --manifest-path cli/Cargo.toml # for release build run buildPhase
+```
+
+Testing:
+
+```
+sudo nix-shell
 bash test.sh <DEVICE>
 ```
 

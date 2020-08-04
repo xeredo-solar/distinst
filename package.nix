@@ -18,7 +18,8 @@
 , nixStable
 , makeWrapper
 , path
-, conf-tool ? ((import (builtins.fetchTarball https://nix.ssd-solar.dev/dev/solaros/nixexprs.tar.xz)).conf-tool)
+, conf-tool
+, shellHookAppend ? "" # only used by shell.nix to add channels to NIX_PATH
 }:
 
 let
@@ -51,8 +52,21 @@ let
       ];
     }; };
     with config.system.build;
-      [ nixPatched ] ++ [ nixos-generate-config nixos-install conf-tool /* nixos-enter manual.manpages */] ++
-        [ (writeShellScriptBin "nixos-install-wrapped" "exec nixos-install \"$@\" 3>&1 >/dev/null") ];
+      # https://github.com/NixOS/nixpkgs/pull/87182/files?file-filters%5B%5D=.nix&file-filters%5B%5D=.sh&file-filters%5B%5D=.xml
+      /*
+      -    nix build --out-link "$outLink" --store "$mountPoint" "${extraBuildFlags[@]}" \
+      +    nix-build --out-link "$outLink" --store "$mountPoint" "${extraBuildFlags[@]}" \
+               --extra-substituters "$sub" \
+      -        -f '<nixpkgs/nixos>' system -I "nixos-config=$NIXOS_CONFIG" ${verbosity[@]} ${buildLogs}
+      +        '<nixpkgs/nixos>' -A system -I "nixos-config=$NIXOS_CONFIG" ${verbosity[@]}
+      */
+      [ nixPatched ] ++ [ nixos-generate-config (nixos-install.overrideAttrs(a: a // {
+          postInstall = ''
+            sed 's|nix-build|nix build|g' -i $out/bin/nixos-install
+            sed "s| '<nixpkgs/nixos>' -A system|-f '<nixpkgs/nixos>' system|g" -i $out/bin/nixos-install
+          '';
+          })) conf-tool /* nixos-enter manual.manpages */] ++
+        [ (writeShellScriptBin "nixos-install-wrapped" (builtins.readFile ./install-wrapper.sh)) ];
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
@@ -121,6 +135,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   shellHook = ''
     ${preBuild}
     export PATH="${stdenv.lib.makeBinPath tools}:$PATH"
+    ${shellHookAppend}
   '';
 
   doCheck = false;

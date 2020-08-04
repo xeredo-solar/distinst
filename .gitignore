@@ -18,3 +18,4 @@ debian/
 !debian/*.install
 result*
 buildconfig.rs
+installer.log
