@@ -142,7 +142,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   installPhase = ''
     make VENDORED=1 DEBUG=0 RELEASE=release prefix=$out install
-    wrapProgram $out/bin/distinst --append PATH : ${stdenv.lib.makeBinPath tools}
+    wrapProgram $out/bin/distinst --prefix PATH : ${stdenv.lib.makeBinPath tools}
   '';
 
   meta = with stdenv.lib; {
