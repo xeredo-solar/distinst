@@ -20,6 +20,7 @@
 , path
 , conf-tool
 , shellHookAppend ? "" # only used by shell.nix to add channels to NIX_PATH
+, nix ? nixStable
 }:
 
 let
@@ -42,7 +43,17 @@ let
   releaseDir = "target/${rustTarget}/release";
   rustTarget = rust.toRustTarget stdenv.hostPlatform;
 
-  nixPatched = nixStable.overrideAttrs(p: p // { patches = [ ./json-progress.patch ./disable-experimental-feature-check.patch ]; });
+  nixPatched = nix.overrideAttrs(p: p // {
+    patches = [
+      ./json-progress.patch
+    ] ++
+      (
+        if builtins.substring 0 1 nix.version == "3"
+        then [ ./disable-experimental-feature-check.patch ]
+        else []
+      );
+  });
+
   tools =
     with import "${path}/nixos" { configuration = {
       nixpkgs.overlays = [
