@@ -42,7 +42,7 @@ let
   releaseDir = "target/${rustTarget}/release";
   rustTarget = rust.toRustTarget stdenv.hostPlatform;
 
-  nixPatched = nixStable.overrideAttrs(p: p // { patches = [ ./json-progress.patch ]; });
+  nixPatched = nixStable.overrideAttrs(p: p // { patches = [ ./json-progress.patch ./disable-experimental-feature-check.patch ]; });
   tools =
     with import "${path}/nixos" { configuration = {
       nixpkgs.overlays = [
