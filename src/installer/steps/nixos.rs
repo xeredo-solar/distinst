@@ -4,11 +4,10 @@ use self::json::array;
 use self::json::JsonValue;
 use self::json::parse;
 
-use NO_EFI_VARIABLES;
 use crate::installer::{conf::RecoveryEnv};
-use errors::*;
+use crate::errors::*;
 use disks::{Bootloader, Disks};
-use installer::traits::InstallerDiskOps;
+use crate::installer::traits::InstallerDiskOps;
 use std::{
     path::Path,
     path::Component,
@@ -19,8 +18,8 @@ use std::{
     os::unix::fs::PermissionsExt,
 };
 use timezones::Region;
-use Config;
-use UserAccountCreate;
+use crate::Config;
+use crate::UserAccountCreate;
 
 const USE_STATUS: [(&str, f64); 3] = [
     /* status, weight*/
@@ -230,7 +229,7 @@ fn generate_boot_config(
             ap_nix!(conf, "boot.loader.grub.device", quote!(bootloader_dev.to_str().unwrap().to_owned()));
         }
         Bootloader::Efi => {
-            ap_nix!(conf, "boot.loader.canTouchEfiVariables", if NO_EFI_VARIABLES.load(Ordering::Relaxed) { "false" } else { "true" }); // if not --no-efi-vars
+            // ap_nix!(conf, "boot.loader.canTouchEfiVariables", if NO_EFI_VARIABLES.load(Ordering::Relaxed) { "false" } else { "true" }); // if not --no-efi-vars
             ap_nix!(conf, "boot.loader.efi.efiSysMountPoint", quote!("/boot/efi")); // maybe get from disk ops?
             ap_nix!(conf, "boot.loader.grub.enable", "true");
             ap_nix!(conf, "boot.loader.grub.efiSupport", "true");
