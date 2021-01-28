@@ -17,10 +17,11 @@
 , tzdata
 , nixStable
 , makeWrapper
-, path
+, nixpkgs
 , conf-tool
 , shellHookAppend ? "" # only used by shell.nix to add channels to NIX_PATH
 , nix ? nixStable
+, makeRustPlatform
 }:
 
 let
@@ -61,6 +62,7 @@ let
           nix = nixPatched;
           })
       ];
+      system = "x86-64_linux";
     }; };
     with config.system.build;
       # https://github.com/NixOS/nixpkgs/pull/87182/files?file-filters%5B%5D=.nix&file-filters%5B%5D=.sh&file-filters%5B%5D=.xml
@@ -87,7 +89,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   src = gitignoreSource ./.;
 
-  cargoSha256 = "sha256-Z5LxAFc4SGFpbPRF1tL7qHSzkt8xCaVXsiidbp4QSk0=";
+  cargoSha256 = "sha256-0JZrFJ/b+HHZyyVjppX1dcjiN4YSz6FakfONZxSAeT8=";
 
   nativeBuildInputs = [
     pkgconfig
@@ -147,7 +149,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   shellHook = ''
     ${preBuild}
-    export PATH="${stdenv.lib.makeBinPath tools}:$PATH"
+    export PATH="${lib.makeBinPath tools}:$PATH"
     ${shellHookAppend}
   '';
 
@@ -155,10 +157,10 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   installPhase = ''
     make VENDORED=1 DEBUG=0 RELEASE=release prefix=$out install
-    wrapProgram $out/bin/distinst --prefix PATH : ${stdenv.lib.makeBinPath tools}
+    wrapProgram $out/bin/distinst --prefix PATH : ${lib.makeBinPath tools}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An installer backend";
     homepage = "https://github.com/pop-os/distinst";
     license = licenses.lgpl3;
