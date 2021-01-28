@@ -26,7 +26,7 @@ const USE_STATUS: [(&str, f64); 3] = [
     /* status, weight*/
     ("builds", 1.0),
     ("copyPath", 0.1),
-    ("download", 0.3)
+    ("fileTransfer", 0.3)
 ];
 
 #[macro_export]
