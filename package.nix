@@ -4,7 +4,6 @@
 , dbus
 , rust
 , gettext
-, fetchFromGitHub
 , lib
 , callPackage
 , darwin
@@ -26,16 +25,6 @@
 }:
 
 let
-  gitignoreSrc = fetchFromGitHub {
-    owner = "hercules-ci";
-    repo = "gitignore";
-    # put the latest commit sha of gitignore Nix library here:
-    rev = "2ced4519f865341adcb143c5d668f955a2cb997f";
-    # use what nix suggests in the mismatch message here:
-    sha256 = "sha256-X8xHVRr8N6SzI8Ju87V+A75r3ZwF+CEuXcx5nfZbhTk=";
-  };
-  inherit (import gitignoreSrc { inherit lib; }) gitignoreSource;
-
   libcroco = callPackage ./libcroco.nix { };
 
   ccForBuild="${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc";
@@ -89,7 +78,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
   version = "0.0.1";
 
-  src = gitignoreSource ./.;
+  src = ./.;
 
   cargoSha256 = "sha256-0JZrFJ/b+HHZyyVjppX1dcjiN4YSz6FakfONZxSAeT8=";
 
