@@ -22,6 +22,7 @@
 , shellHookAppend ? "" # only used by shell.nix to add channels to NIX_PATH
 , nixDistinst ? nixFlakes
 , makeRustPlatform
+, system
 }:
 
 let
@@ -51,14 +52,20 @@ let
   });
 
   tools =
-    with import "${path}/nixos" { configuration = {
-      nixpkgs.overlays = [
-        (self: super: {
-          nix = nixPatched;
-          })
+    with nixpkgs.lib.nixosSystem {
+      modules = [
+        ({...}: {
+          nixpkgs.overlays = [
+            (self: super: {
+              nix = nixPatched;
+              })
+          ];
+
+          nix.package = nixPatched;
+        })
       ];
-      system = "x86-64_linux";
-    }; };
+      inherit system;
+     };
     with config.system.build;
       # https://github.com/NixOS/nixpkgs/pull/87182/files?file-filters%5B%5D=.nix&file-filters%5B%5D=.sh&file-filters%5B%5D=.xml
       /*
@@ -73,7 +80,7 @@ let
             sed 's|nix-build|nix build|g' -i $out/bin/nixos-install
             sed "s| '<nixpkgs/nixos>' -A system|-f '<nixpkgs/nixos>' system|g" -i $out/bin/nixos-install
           '';
-          })) conf-tool /* nixos-enter manual.manpages */] ++
+          })) conf-tool /* nixos-enter manual.manpages */ ] ++
         [ (writeShellScriptBin "nixos-install-wrapped" (builtins.readFile ./install-wrapper.sh)) ];
 in
 with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
