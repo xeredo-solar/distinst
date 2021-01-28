@@ -19,3 +19,6 @@ debian/
 result*
 buildconfig.rs
 installer.log
+
+# this is a library not an app, so it should work accross most versions
+flake.lock
