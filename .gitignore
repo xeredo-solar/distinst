@@ -20,5 +20,5 @@ result*
 buildconfig.rs
 installer.log
 
-# this is a library not an app, so it should work accross most versions
+# this ensures the version we are using is a random one, so we can ensure it works as it should anywhere
 flake.lock

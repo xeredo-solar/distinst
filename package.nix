@@ -18,10 +18,10 @@
 , makeWrapper
 , nixpkgs
 , conf-tool
-, shellHookAppend ? "" # only used by shell.nix to add channels to NIX_PATH
 , nixDistinst ? nixFlakes
 , makeRustPlatform
 , system
+, drvSrc ? ./.
 }:
 
 let
@@ -78,7 +78,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   pname = "distinst";
   version = "0.0.1";
 
-  src = ./.;
+  src = drvSrc;
 
   cargoSha256 = "sha256-0JZrFJ/b+HHZyyVjppX1dcjiN4YSz6FakfONZxSAeT8=";
 
@@ -141,7 +141,6 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
   shellHook = ''
     ${preBuild}
     export PATH="${lib.makeBinPath tools}:$PATH"
-    ${shellHookAppend}
   '';
 
   doCheck = false;
