@@ -118,6 +118,38 @@ impl<'a> ChrootConfigurator<'a> {
         }
     }
 
+    pub fn install_drivers(&self, install: bool) -> io::Result<()> {
+        let mut packages = Vec::new();
+        if install {
+            info!("finding drivers for hardware");
+            let args: &[&str] = &["list"];
+            let output = self.chroot.command("ubuntu-drivers", args).run_with_stdout()?;
+
+            for result in output.lines().map(|line| line.split(",").nth(0)) {
+                match result {
+                    Some(package) => packages.push(package),
+                    None => continue,
+                }
+            }
+
+            info!("installing drivers: {:?}", packages);
+            let mut command = self.chroot.command(
+                "apt-get",
+                &cascade! {
+                    Vec::with_capacity(APT_OPTIONS.len() + packages.len() + 3);
+                    ..extend_from_slice(&["install", "-q", "-y"]);
+                    ..extend_from_slice(APT_OPTIONS);
+                    ..extend(packages);
+                },
+            );
+
+            command.stdout(Stdio::null());
+            command.run()
+        } else {
+            Ok(())
+        }
+    }
+
     /// Disable that repository, now that they system has been installed.
     pub fn cdrom_disable(&self) -> io::Result<()> {
         if Path::new("/cdrom").exists() {
@@ -135,19 +167,50 @@ impl<'a> ChrootConfigurator<'a> {
         user: &str,
         pass: Option<&str>,
         fullname: Option<&str>,
+        profile_icon: Option<&str>,
     ) -> io::Result<()> {
-        let mut command = self.chroot.command("useradd", &["-m", "-G", "adm,sudo"]);
-        if let Some(name) = fullname {
-            command.args(&["-c", name, user]);
-        } else {
-            command.arg(user);
-        };
+        // Add the user to the system.
+        {
+            const DEFAULT_USERADD_FLAGS: &[&str] = &[
+                "-m",
+                "-G", "adm,sudo,lpadmin",
+                "-s", "/bin/bash"
+            ];
 
-        command.run()?;
+            let mut command = self.chroot.command("useradd", DEFAULT_USERADD_FLAGS);
 
+            if let Some(name) = fullname {
+                command.args(&["-c", name]);
+            }
+
+            command.arg(user).run()?;
+        }
+
+        // Set the password for the newly-created user.
         if let Some(pass) = pass {
-            let pass = [pass, "\n", pass, "\n"].concat();
-            self.chroot.command("passwd", &[user]).stdin_input(&pass).run()?;
+            let pass = &[pass, "\n", pass, "\n"].concat();
+            self.chroot.command("passwd", &[user]).stdin_input(pass).run()?;
+        }
+
+        // Copy the profile icon to `/var/lib/AccountsService/icons/{user}` and assign that in
+        // the config file at `/var/lib/AccountsService/users/{user}`.
+        if let Some(path) = profile_icon {
+            let mut dest = self.chroot.path.join(&["var/lib/AccountsService/icons/", user].concat());
+
+            if fs::copy(&path, &dest).is_err() {
+                let _ = fs::remove_file(&dest);
+                return Ok(());
+            }
+
+            dest = self.chroot.path.join(&["var/lib/AccountsService/users/", user].concat());
+
+            if fs::write(&dest, fomat!(
+                "[User]\n"
+                "Icon=/var/lib/AccountsService/icons/" (user) "\n"
+                "SystemAccount=false\n"
+            )).is_err() {
+                let _ = fs::remove_file(&dest);
+            }
         }
 
         Ok(())
@@ -271,6 +334,7 @@ impl<'a> ChrootConfigurator<'a> {
     pub fn netresolve(&self) -> io::Result<()> {
         info!("creating /etc/resolv.conf");
 
+
         let resolvconf = "../run/systemd/resolve/stub-resolv.conf";
         self.chroot.command("ln", &["-sf", resolvconf, "/etc/resolv.conf"]).run()
     }
@@ -332,6 +396,19 @@ impl<'a> ChrootConfigurator<'a> {
             return Ok(());
         }
 
+        // Erase whatever is on the recovery partition currently
+        if let Ok(dir) = recovery_path.read_dir() {
+            for entry in dir.filter_map(Result::ok) {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() {
+                        let _ = fs::remove_file(&entry.path());
+                    } else if metadata.is_dir() {
+                        let _ = fs::remove_dir_all(&entry.path());
+                    }
+                }
+            }
+        }
+
         let casper_data_: String;
         let casper_data: &str = if Path::new("/cdrom/recovery.conf").exists() {
             casper_data_ = ["/cdrom/casper-", cdrom_uuid, "/"].concat();
@@ -346,7 +423,7 @@ impl<'a> ChrootConfigurator<'a> {
             self.chroot
                 .command(
                     "rsync",
-                    &["-KLavc", "/cdrom/.disk", "/cdrom/dists", "/cdrom/pool", "/recovery"],
+                    &["-KLavc", "--delete-before", "/cdrom/.disk", "/cdrom/dists", "/cdrom/pool", "/recovery"],
                 )
                 .run()?;
 

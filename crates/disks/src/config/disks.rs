@@ -137,6 +137,7 @@ impl Disks {
 
     /// Searches for a LVM device which is inside of the given LUKS physical volume name.
     pub fn get_logical_device_within_pv_mut(&mut self, pv: &str) -> Option<&mut LogicalDevice> {
+
         self.logical
             .iter_mut()
             .find(|d| d.encryption.as_ref().map_or(false, |enc| enc.physical_volume == pv))
@@ -459,6 +460,7 @@ impl Disks {
 
             // Determine which VG the newly-decrypted device belongs to.
             let pv = &PathBuf::from(["/dev/mapper/", &enc.physical_volume].concat());
+            info!("which belongs to PV {:?}", pv);
             let mut attempt = 0;
             while !pv.exists() && attempt < 10 {
                 info!("waiting 1 second for {:?} to activate", pv);
@@ -570,12 +572,19 @@ impl Disks {
     pub fn probe_devices() -> Result<Disks, DiskError> {
         let mut disks = Disks::default();
         for mut device in Device::devices(true) {
-            match device.type_() {
-                DeviceType::PED_DEVICE_UNKNOWN
-                | DeviceType::PED_DEVICE_LOOP
-                | DeviceType::PED_DEVICE_FILE
-                | DeviceType::PED_DEVICE_DM => continue,
-                _ => disks.add(Disk::new(&mut device, false)?),
+            if let Some(name) = device.path().file_name().and_then(|x| x.to_str()) {
+                // Ignore CDROM devices
+                if name.starts_with("sr") || name.starts_with("scd") { continue }
+
+                info!("probed {:?}", device.path());
+
+                match device.type_() {
+                    DeviceType::PED_DEVICE_UNKNOWN
+                    | DeviceType::PED_DEVICE_LOOP
+                    | DeviceType::PED_DEVICE_FILE
+                    | DeviceType::PED_DEVICE_DM => continue,
+                    _ => disks.add(Disk::new(&mut device, false)?),
+                }
             }
         }
 
@@ -978,9 +987,15 @@ impl Disks {
                     }
 
                     // 256 MiB should be the minimal size of the ESP partition.
+                    const REQUIRED_ESP_SIZE: u64 = 256 * 1024 * 1024;
                     const REQUIRED_SECTORS: u64 = 524_288;
 
-                    if boot.get_sectors() < REQUIRED_SECTORS {
+                    if (boot.get_device_path().read_link().is_err()
+                        && boot.get_sectors() < REQUIRED_SECTORS)
+                        || (boot.get_device_path().read_link().is_ok()
+                            && (boot.get_sectors() * boot.get_logical_block_size()
+                                < REQUIRED_ESP_SIZE))
+                    {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidInput,
                             "the ESP partition must be at least 256 MiB in size",
@@ -1007,7 +1022,7 @@ impl Disks {
         let mut existing_devices: Vec<LogicalDevice> = Vec::new();
 
         for disk in &self.physical {
-            let sector_size = disk.get_sector_size();
+            let sector_size = disk.get_logical_block_size();
             for partition in disk.get_partitions().iter() {
                 if let Some(ref lvm) = partition.volume_group {
                     // TODO: NLL

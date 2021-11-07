@@ -34,6 +34,7 @@ fn main() {
         .arg(
             Arg::with_name("username")
                 .long("username")
+                .requires("profile_icon")
                 .help("specifies a default user account to create")
                 .takes_value(true),
         )
@@ -49,6 +50,12 @@ fn main() {
                 .long("realname")
                 .help("the full name of user to create")
                 .requires("username")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("profile_icon")
+                .long("profile_icon")
+                .help("path to icon for user profile")
                 .takes_value(true),
         )
         .arg(
@@ -217,6 +224,11 @@ fn main() {
                 .takes_value(true)
                 .multiple(true),
         )
+        .arg(
+            Arg::with_name("run-ubuntu-drivers")
+                .long("run-ubuntu-drivers")
+                .help("use ubuntu-drivers to find drivers then install in the chroot, some may have proprietary licenses")
+        )
         .get_matches();
 
     if let Err(err) = distinst::log(|_level, _message| {}) {
@@ -251,6 +263,8 @@ fn main() {
 
     let user_account = matches.value_of("username").map(|username| {
         let username = username.to_owned();
+        let profile_icon = matches.value_of("profile_icon").map(String::from);
+
         let realname = matches.value_of("realname").map(String::from);
         let password = matches.value_of("password").map(String::from).or_else(|| {
             if unsafe { libc::isatty(0) } == 0 {
@@ -263,7 +277,7 @@ fn main() {
             }
         });
 
-        UserAccountCreate { realname, username, password }
+        UserAccountCreate { realname, username, password, profile_icon }
     });
 
     let pb_opt: Rc<RefCell<Option<ProgressBar<io::Stdout>>>> = Rc::new(RefCell::new(None));
@@ -409,6 +423,12 @@ fn install_flags(matches: &ArgMatches) -> u8 {
 
     flags += if matches.occurrences_of("hardware-support") != 0 {
         distinst::INSTALL_HARDWARE_SUPPORT
+    } else {
+        0
+    };
+
+    flags += if matches.occurrences_of("run-ubuntu-drivers") != 0 {
+        distinst::RUN_UBUNTU_DRIVERS
     } else {
         0
     };

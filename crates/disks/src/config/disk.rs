@@ -124,9 +124,9 @@ impl BlockDeviceExt for Disk {
 }
 
 impl SectorExt for Disk {
-    fn get_sector_size(&self) -> u64 { 512 }
-
-    fn get_sectors(&self) -> u64 { self.size }
+    fn get_sectors(&self) -> u64 {
+        self.size
+    }
 }
 
 impl PartitionTableExt for Disk {
