@@ -14,13 +14,12 @@
 , writeShellScriptBin
 , glibc
 , tzdata
-, nixFlakes
 , makeWrapper
 , nixpkgs
 , conf-tool
-, nixDistinst ? nixFlakes
 , makeRustPlatform
-, system
+, system ? stdenv.targetPlatform.system
+, nixFlakes
 , drvSrc ? ./.
 }:
 
@@ -32,7 +31,7 @@ let
   releaseDir = "target/${rustTarget}/release";
   rustTarget = rust.toRustTarget stdenv.hostPlatform;
 
-  nixPatched = nixDistinst.overrideAttrs(p: p // {
+  nixPatched = nixFlakes.overrideAttrs(p: p // {
     patches = p.patches ++ [
       ./json-progress.patch
     ];
@@ -78,7 +77,7 @@ with rust; (makeRustPlatform packages.stable).buildRustPackage rec {
 
   src = drvSrc;
 
-  cargoSha256 = "sha256-GgYb7PcTysK74YE+aIls2DcVDj8hvzGxqbtxrr+yOV0=";
+  cargoSha256 = "sha256-9tL5wLwTaiL4jP0BoUgR4fB3HE73XI4y8FT5nE626fw=";
 
   nativeBuildInputs = [
     pkg-config

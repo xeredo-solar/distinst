@@ -19,6 +19,3 @@ debian/
 result*
 buildconfig.rs
 installer.log
-
-# this ensures the version we are using is a random one, so we can ensure it works as it should anywhere
-flake.lock
